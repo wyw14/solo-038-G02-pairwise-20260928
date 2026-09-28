@@ -25,6 +25,12 @@ func NewRouter(runtime *service.Runtime) http.Handler {
 		api.Get("/incidents", handler.incidents)
 		api.Get("/recovery", handler.recoveryStatus)
 		api.Post("/jobs/current/cancel", handler.cancelCurrent)
+		api.Route("/imposition", func(imposition chi.Router) {
+			imposition.Post("/plans", handler.createImpositionPlan)
+			imposition.Post("/plans/revisions", handler.reviseImpositionPlan)
+			imposition.Get("/plans/current", handler.currentImpositionPlan)
+			imposition.Get("/plans/{id}/generations/{generation}", handler.impositionPlanVersion)
+		})
 	})
 	return router
 }
