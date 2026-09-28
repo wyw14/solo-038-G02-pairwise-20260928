@@ -164,21 +164,27 @@ func (runtime *Runtime) stopPressOperation(current model.Job) error {
 
 func (runtime *Runtime) registerOperation(current model.Job) error {
 	now := time.Now()
-	plateGeneration, err := runtime.pressControl.ChangePlate(string(model.NewOperationID()))
+	planID, planRevision, _ := runtime.ActivePlan()
+	plateGeneration, err := runtime.pressControl.ChangePlate(string(model.NewOperationID()), planID, planRevision)
 	if err != nil {
 		return err
 	}
 	current.PlateGeneration = plateGeneration
-	if err := runtime.register.Start(current.Generation, plateGeneration, 0, now); err != nil {
+	current.PlanID = planID
+	current.PlanRevision = planRevision
+	if err := runtime.jobs.Put(current); err != nil {
 		return err
 	}
-	frame := sensor.CameraFrame{ID: string(model.NewOperationID()), Camera: "register-camera", JobGeneration: current.Generation, PlateGeneration: plateGeneration, WebMeter: 1, Offset: 0.04, CapturedAt: now, ReceivedAt: now.Add(time.Millisecond)}
+	if err := runtime.register.Start(current.Generation, plateGeneration, planID, planRevision, 0, now); err != nil {
+		return err
+	}
+	frame := sensor.CameraFrame{ID: string(model.NewOperationID()), Camera: "register-camera", JobGeneration: current.Generation, PlateGeneration: plateGeneration, PlanID: planID, PlanRevision: planRevision, WebMeter: 1, Offset: 0.04, CapturedAt: now, ReceivedAt: now.Add(time.Millisecond)}
 	runtime.sensors.PutFrame(frame)
 	if err := runtime.registerControl.AcceptFrame(frame, runtime.config.RegisterGap); err != nil {
 		return err
 	}
 	receiverState := registerpkg.NewState()
-	if err := receiverState.Start(current.Generation, plateGeneration, 0, now); err != nil {
+	if err := receiverState.Start(current.Generation, plateGeneration, planID, planRevision, 0, now); err != nil {
 		return err
 	}
 	receiver := registerpkg.NewReceiver(receiverState, runtime.config.RegisterGap)
@@ -194,7 +200,7 @@ func (runtime *Runtime) registerOperation(current model.Job) error {
 	if !runtime.pressControl.RegisterStable(0.1, 1) || !runtime.registerControl.Stable(1) {
 		return fmt.Errorf("register evidence did not stabilize")
 	}
-	_, err = press.ApplyRegisterFrame(runtime.phase, "cyan", frame, current.Generation, plateGeneration)
+	_, err = press.ApplyRegisterFrame(runtime.phase, "cyan", frame, current.Generation, plateGeneration, planID, planRevision)
 	return err
 }
 
@@ -356,7 +362,7 @@ func (runtime *Runtime) diagnosticsOperation(ctx context.Context, current model.
 		return err
 	}
 	localPress := press.NewState()
-	if err := press.RestorePhases(localPress, "diagnostic-plate", 1, map[string]float64{"cyan": 0}); err != nil {
+	if err := press.RestorePhases(localPress, "diagnostic-plate", 1, "", 0, map[string]float64{"cyan": 0}); err != nil {
 		return err
 	}
 	return nil

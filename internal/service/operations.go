@@ -39,11 +39,11 @@ func (runtime *Runtime) CreateOperation(ctx context.Context, kind string) (Opera
 
 func (runtime *Runtime) Equipment() []map[string]any {
 	roll, generation, feedOwner, feedSpeed := runtime.unwind.Snapshot()
-	plate, plateGeneration, color, phases := runtime.press.Snapshot()
+	plate, plateGeneration, planID, planRevision, color, phases := runtime.press.Snapshot()
 	ready, folderSpeed, cutLength, fault, lots := runtime.folder.Snapshot()
 	values := []map[string]any{
 		{"name": "unwind", "roll": roll, "generation": generation, "owner": feedOwner, "speed": feedSpeed},
-		{"name": "press", "plate": plate, "generation": plateGeneration, "color": color, "phases": phases},
+		{"name": "press", "plate": plate, "generation": plateGeneration, "plan_id": planID, "plan_revision": planRevision, "color": color, "phases": phases},
 		{"name": "dryer", "state": runtime.dryerControlStatus()},
 		{"name": "folder", "ready": ready, "speed": folderSpeed, "cut_length": cutLength, "fault": fault, "lots": lots},
 	}

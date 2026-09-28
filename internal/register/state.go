@@ -11,6 +11,8 @@ import (
 type Window struct {
 	JobGeneration   uint64    `json:"job_generation"`
 	PlateGeneration uint64    `json:"plate_generation"`
+	PlanID          string    `json:"plan_id"`
+	PlanRevision    uint64    `json:"plan_revision"`
 	StartMeter      float64   `json:"start_meter"`
 	LastMeter       float64   `json:"last_meter"`
 	StartedAt       time.Time `json:"started_at"`
@@ -28,13 +30,16 @@ func NewState() *State {
 	return &State{}
 }
 
-func (state *State) Start(jobGeneration, plateGeneration uint64, meter float64, now time.Time) error {
+func (state *State) Start(jobGeneration, plateGeneration uint64, planID string, planRevision uint64, meter float64, now time.Time) error {
 	if jobGeneration == 0 || plateGeneration == 0 {
 		return fmt.Errorf("register window generations are required")
 	}
+	if (planID == "") != (planRevision == 0) {
+		return fmt.Errorf("register window plan identity is incomplete")
+	}
 	state.mu.Lock()
 	defer state.mu.Unlock()
-	state.window = Window{JobGeneration: jobGeneration, PlateGeneration: plateGeneration, StartMeter: meter, LastMeter: meter, StartedAt: now.UTC(), LastAt: now.UTC(), Valid: true}
+	state.window = Window{JobGeneration: jobGeneration, PlateGeneration: plateGeneration, PlanID: planID, PlanRevision: planRevision, StartMeter: meter, LastMeter: meter, StartedAt: now.UTC(), LastAt: now.UTC(), Valid: true}
 	return nil
 }
 
@@ -46,6 +51,9 @@ func (state *State) Add(frame sensor.CameraFrame) error {
 	defer state.mu.Unlock()
 	if !state.window.Valid || frame.JobGeneration != state.window.JobGeneration || frame.PlateGeneration != state.window.PlateGeneration {
 		return fmt.Errorf("register frame generation does not match window")
+	}
+	if frame.PlanID != state.window.PlanID || frame.PlanRevision != state.window.PlanRevision {
+		return fmt.Errorf("register frame plan does not match window")
 	}
 	if frame.WebMeter < state.window.LastMeter {
 		return fmt.Errorf("register frame meter moved backwards")

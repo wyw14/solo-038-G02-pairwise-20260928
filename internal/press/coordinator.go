@@ -66,8 +66,8 @@ func (coordinator *Coordinator) CanSplice() bool {
 	return true
 }
 
-func (coordinator *Coordinator) ChangePlate(plate string) (uint64, error) {
-	generation, err := coordinator.state.ChangePlate(plate)
+func (coordinator *Coordinator) ChangePlate(plate, planID string, planRevision uint64) (uint64, error) {
+	generation, err := coordinator.state.ChangePlate(plate, planID, planRevision)
 	if err != nil {
 		return 0, err
 	}
@@ -78,7 +78,7 @@ func (coordinator *Coordinator) ChangePlate(plate string) (uint64, error) {
 }
 
 func (coordinator *Coordinator) RecordRegister(plateGeneration uint64, offset float64) error {
-	_, active, _, _ := coordinator.state.Snapshot()
+	_, active, _, _, _, _ := coordinator.state.Snapshot()
 	if plateGeneration != active {
 		return fmt.Errorf("register sample belongs to another plate")
 	}
@@ -94,7 +94,7 @@ func (coordinator *Coordinator) RecordRegister(plateGeneration uint64, offset fl
 func (coordinator *Coordinator) RegisterStable(tolerance float64, minimum int) bool {
 	coordinator.mu.RLock()
 	defer coordinator.mu.RUnlock()
-	_, active, _, _ := coordinator.state.Snapshot()
+	_, active, _, _, _, _ := coordinator.state.Snapshot()
 	count := 0
 	for _, sample := range coordinator.registerSamples {
 		if sample.plateGeneration == active && math.Abs(sample.offset) <= tolerance {

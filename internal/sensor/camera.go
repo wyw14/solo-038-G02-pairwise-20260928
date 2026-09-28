@@ -10,6 +10,8 @@ type CameraFrame struct {
 	Camera          string    `json:"camera"`
 	JobGeneration   uint64    `json:"job_generation"`
 	PlateGeneration uint64    `json:"plate_generation"`
+	PlanID          string    `json:"plan_id"`
+	PlanRevision    uint64    `json:"plan_revision"`
 	WebMeter        float64   `json:"web_meter"`
 	Offset          float64   `json:"offset"`
 	CapturedAt      time.Time `json:"captured_at"`
@@ -29,8 +31,8 @@ func (frame CameraFrame) Validate() error {
 	return nil
 }
 
-func (frame CameraFrame) BelongsTo(jobGeneration, plateGeneration uint64) bool {
-	return frame.JobGeneration == jobGeneration && frame.PlateGeneration == plateGeneration
+func (frame CameraFrame) BelongsTo(jobGeneration, plateGeneration uint64, planID string, planRevision uint64) bool {
+	return frame.JobGeneration == jobGeneration && frame.PlateGeneration == plateGeneration && frame.PlanID == planID && frame.PlanRevision == planRevision
 }
 
 func (frame CameraFrame) DeliveryDelay() time.Duration {

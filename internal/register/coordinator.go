@@ -30,6 +30,9 @@ func (coordinator *Coordinator) AcceptFrame(frame sensor.CameraFrame, maximumGap
 	if frame.JobGeneration != window.JobGeneration || frame.PlateGeneration != window.PlateGeneration {
 		return fmt.Errorf("camera frame does not belong to active register generation")
 	}
+	if frame.PlanID != window.PlanID || frame.PlanRevision != window.PlanRevision {
+		return fmt.Errorf("camera frame does not belong to active imposition plan")
+	}
 	if frame.ReceivedAt.Sub(window.LastAt) > maximumGap {
 		coordinator.state.Break()
 		return fmt.Errorf("camera gap exceeded register dwell")

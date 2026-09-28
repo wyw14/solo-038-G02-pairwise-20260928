@@ -9,6 +9,7 @@ import (
 
 	"github.com/wyw14/solo-038/internal/dryer"
 	"github.com/wyw14/solo-038/internal/folder"
+	"github.com/wyw14/solo-038/internal/imposition"
 	"github.com/wyw14/solo-038/internal/ink"
 	"github.com/wyw14/solo-038/internal/job"
 	"github.com/wyw14/solo-038/internal/journal"
@@ -56,6 +57,9 @@ type Runtime struct {
 	splice          *splice.State
 	spliceControl   *splice.Coordinator
 	incidents       []Incident
+	imposition      *imposition.Store
+	activePlanID    string
+	activePlanRev   uint64
 }
 
 func NewRuntime(config Config) (*Runtime, error) {
@@ -80,8 +84,16 @@ func NewRuntime(config Config) (*Runtime, error) {
 	registerState := register.NewState()
 	folderState := folder.NewState()
 	spliceState := splice.NewState()
+	impositionStore := imposition.NewStore(filepath.Join(config.DataDir, "imposition-plans.json"))
+	if err := impositionStore.Load(); err != nil {
+		return nil, fmt.Errorf("load imposition plans: %w", err)
+	}
 	festoon := unwind.NewFestoon(config.FestoonCapacity)
-	runtime := &Runtime{startedAt: time.Now().UTC(), config: config, journal: journalStore, jobs: jobState, jobControl: job.NewCoordinator(jobState, dryerState), sensors: sensor.NewState(), unwind: unwindState, loader: unwind.NewLoader(unwindState), festoon: festoon, web: webState, webControl: web.NewCoordinator(webState, path), press: pressState, pressUnits: pressController, pressControl: press.NewCoordinator(pressController, pressState), phase: press.NewPhaseController(pressState, 2.5), ink: inkState, register: registerState, registerControl: register.NewCoordinator(registerState, journalStore), dryer: dryerState, dryerControl: dryer.NewCoordinator(dryerState), folder: folderState, folderControl: folder.NewController(folderState), splice: spliceState}
+	runtime := &Runtime{startedAt: time.Now().UTC(), config: config, journal: journalStore, jobs: jobState, jobControl: job.NewCoordinator(jobState, dryerState), sensors: sensor.NewState(), unwind: unwindState, loader: unwind.NewLoader(unwindState), festoon: festoon, web: webState, webControl: web.NewCoordinator(webState, path), press: pressState, pressUnits: pressController, pressControl: press.NewCoordinator(pressController, pressState), phase: press.NewPhaseController(pressState, 2.5), ink: inkState, register: registerState, registerControl: register.NewCoordinator(registerState, journalStore), dryer: dryerState, dryerControl: dryer.NewCoordinator(dryerState), folder: folderState, folderControl: folder.NewController(folderState), splice: spliceState, imposition: impositionStore}
+	if id, revision, ok := impositionStore.Active(); ok {
+		runtime.activePlanID = string(id)
+		runtime.activePlanRev = revision
+	}
 	runtime.inkControl = ink.NewCoordinator(ink.NewCircuit(inkState))
 	runtime.spliceControl = splice.NewCoordinator(spliceState, festoon, splice.NewLeaseManager())
 	return runtime, nil

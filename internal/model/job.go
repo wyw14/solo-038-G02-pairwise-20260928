@@ -36,6 +36,8 @@ type Job struct {
 	Generation      uint64    `json:"generation"`
 	RollGeneration  uint64    `json:"roll_generation"`
 	PlateGeneration uint64    `json:"plate_generation"`
+	PlanID          string    `json:"plan_id"`
+	PlanRevision    uint64    `json:"plan_revision"`
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
 }
@@ -59,8 +61,10 @@ func (job Job) ChangeRoll(now time.Time) Job {
 	return job
 }
 
-func (job Job) ChangePlate(now time.Time) Job {
+func (job Job) ChangePlate(now time.Time, planID string, planRevision uint64) Job {
 	job.PlateGeneration++
+	job.PlanID = planID
+	job.PlanRevision = planRevision
 	job.UpdatedAt = now.UTC()
 	return job
 }
